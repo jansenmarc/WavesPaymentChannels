@@ -1,0 +1,6 @@
+{
+    "node": "<the node you want to connect to, e.g., https://testnode1.wavesnodes.com>",
+    "seed": "<the Seed of my account that wants to participate in this payment channel>",
+    "secondAddressPublicKey": "<the public key of the second account that participates in the payment channel>",
+    "network": "<the network you want to connect to, e.g., testnet or mainnet>"
+}

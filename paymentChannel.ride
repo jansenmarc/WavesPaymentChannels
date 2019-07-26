@@ -1,0 +1,209 @@
+{-# STDLIB_VERSION 3 #-}
+{-# CONTENT_TYPE DAPP #-}
+{-# SCRIPT_TYPE ACCOUNT #-}
+
+func getStringFromKey(key: String) = {
+    match getString(this, key) {
+        case str:String => str
+        case _ => throw("No string found for entry!")
+    }
+}
+
+func getStringFromKeyOrEmpty(key: String) = {
+    match getString(this, key) {
+        case str:String => str
+        case _ => ""
+    }
+}
+
+func getIntFromKey(key: String) = {
+    match getInteger(this, key) {
+        case n:Int => n
+        case _ => 0
+    }
+}
+
+func channelIsInitiated() = {
+    let firstAddress = getStringFromKey("firstAddress")
+    let secondAddress = getStringFromKey("secondAddress")
+    let firstCounterPart = getStringFromKey(firstAddress + "_counterpart")
+    let secondCounterpart = getStringFromKey(secondAddress + "_counterpart")
+
+    getIntFromKey("timelockPeriod") > 0
+}
+
+func closingInitiated() = {
+    let initiator = getStringFromKey("closing_initiated_by")
+
+    initiator != ""
+}
+
+func checkIfValidAccount(sender: String) = {
+    let firstAddress = getStringFromKey("firstAddress")
+    let secondAddress = getStringFromKey("secondAddress")
+
+    if (firstAddress != sender && secondAddress != sender) then
+        false
+    else
+        true
+}
+
+@Callable(i)
+func claimCheating(recipientA: String, amountRecipientA: Int, recipientB: String, amountRecipientB: Int, timestamp: Int, signature: String) = {
+    let sender = toBase58String(i.caller.bytes)
+    let validSender = checkIfValidAccount(sender)
+    let originalString = recipientA + toString(amountRecipientA) + recipientB + toString(amountRecipientB) + toString(timestamp)
+    let counterPart = getStringFromKey(sender + "_counterpart")
+    let signedByCounterpart = sigVerify(toBytes(originalString), fromBase58String(signature), fromBase58String(counterPart))
+    let notInitiator = sender != getStringFromKey("closing_initiated_by")
+    let oldTimestamp = getIntFromKey("timestamp")
+    let isClosingInitiated = closingInitiated()
+
+    if (isClosingInitiated) then
+        if (notInitiator && validSender && signedByCounterpart && oldTimestamp < timestamp) then
+            TransferSet([
+                ScriptTransfer(i.caller, amountRecipientA + amountRecipientB, unit)
+            ])
+        else throw("Wrong signature or timestamp not newer!")
+    else throw("Closing of channel not initiated yet!")
+}
+
+@Callable(i)
+func confirmClose() = {
+    let sender = toBase58String(i.caller.bytes)
+    let validSender = checkIfValidAccount(sender)
+    let initiator = getString(this, "closing_initiated_by")
+    let isClosingInitiated = closingInitiated()
+
+    if (isClosingInitiated) then
+        if (sender != initiator && validSender) then
+            let firstAddress = getStringFromKey("firstAddress")
+            let secondAddress = getStringFromKey("secondAddress")
+            let firstAddressAmount = getIntFromKey(firstAddress)
+            let secondAddressAmount = getIntFromKey(secondAddress)
+
+            TransferSet([
+                ScriptTransfer(Address(fromBase58String(firstAddress)), firstAddressAmount, unit),
+                ScriptTransfer(Address(fromBase58String(secondAddress)), secondAddressAmount, unit)
+            ])
+        else throw("Initiator can not confirm closing of the channel!")
+    else throw("Closing of channel not initiated yet!")
+}
+
+@Callable(i)
+func closeAfterTimelock() = {
+    let sender = toBase58String(i.caller.bytes)
+    let validSender = checkIfValidAccount(sender)
+    let timelock = getIntFromKey("timelock")
+    let isClosingInitiated = closingInitiated()
+
+    if (isClosingInitiated) then
+        if (height > timelock && validSender) then
+            let firstAddress = getStringFromKey("firstAddress")
+            let secondAddress = getStringFromKey("secondAddress")
+            let firstAddressAmount = getIntFromKey(firstAddress)
+            let secondAddressAmount = getIntFromKey(secondAddress)
+
+            TransferSet([
+                ScriptTransfer(Address(fromBase58String(firstAddress)), firstAddressAmount, unit),
+                ScriptTransfer(Address(fromBase58String(secondAddress)), secondAddressAmount, unit)
+            ])
+        else throw("Timelock still valid!")
+    else throw("Closing of channel not initiated yet!")
+}
+
+@Callable(i)
+func initialClosing(recipientA: String, amountRecipientA: Int, recipientB: String, amountRecipientB: Int, timestamp: Int, signature: String) = {
+    let closingInitiator = getStringFromKeyOrEmpty("closing_initiated_by")
+    let closingAlreadyInitiated = closingInitiator != ""
+    let isInitiated = channelIsInitiated()
+    let sender = toBase58String(i.caller.bytes)
+    let validSender = checkIfValidAccount(sender)
+    let recipientAValid = checkIfValidAccount(recipientA)
+    let recipientBValid = checkIfValidAccount(recipientB)
+    let validRecipients = recipientAValid || recipientBValid
+    let originalString = recipientA + toString(amountRecipientA) + recipientB + toString(amountRecipientB) + toString(timestamp)
+    let counterPart = getStringFromKey(sender + "_counterpart")
+    let signedByCounterpart = sigVerify(toBytes(originalString), fromBase58String(signature), fromBase58String(counterPart))
+    let timelockPeriod = getIntFromKey("timelockPeriod")
+
+    if (!closingAlreadyInitiated) then
+        if (isInitiated) then
+            if (validSender) then
+                if (validRecipients) then
+                    if (signedByCounterpart) then
+                        WriteSet([
+                            DataEntry(recipientA, amountRecipientA),
+                            DataEntry(recipientB, amountRecipientB),
+                            DataEntry("closing_initiated_by", sender),
+                            DataEntry("timestamp", timestamp),
+                            DataEntry("timelock", height + timelockPeriod)
+                        ])
+                    else throw("Wrong signature!")
+                else throw("Unvalid recipients")
+            else throw("Sender of transaction not valid!")
+        else throw("Channnel not initiated!")
+    else throw("Closing already initiated by: " + closingInitiator)
+}
+
+@Callable(i)
+func fund() = {
+    let isInitiated = channelIsInitiated()
+    let sender = toBase58String(i.caller.bytes)
+    let validSender = checkIfValidAccount(sender)
+    #let payment = extractWithErrorMessage(i.payment, "No payment attached!")
+    let payment = match(i.payment) {
+        case p: AttachedPayment => p
+        case _ => throw("No Payment attached!")
+    }
+    let paymentInAsset = isDefined(payment.assetId)
+    let amountKey = sender + "_amount"
+    let currentAmount = getIntFromKey(amountKey)
+
+    if (isInitiated) then
+        if (validSender) then
+            if (!paymentInAsset) then
+                if (currentAmount != 0) then throw("User has already funded payment channel!")
+                else
+                    WriteSet([
+                        DataEntry(amountKey, payment.amount)
+                    ])
+            else
+                throw("Funding in Waves only!")
+        else
+            throw("Wrong account tries to fund channel: " + sender)
+    else throw("Channnel not initiated!")
+}
+
+@Callable(i)
+func init(firstPublicKey: String, secondPublicKey: String, timelockPeriod: Int) = {
+    let calledBySelf = i.caller == this
+    let firstAddress = toBase58String(addressFromPublicKey(fromBase58String(firstPublicKey)).bytes)
+    let secondAddress = toBase58String(addressFromPublicKey(fromBase58String(secondPublicKey)).bytes)
+    let currentFirstAddress = getStringFromKeyOrEmpty(firstAddress + "_counterpart")
+    let currentSecondAddress = getStringFromKeyOrEmpty(secondAddress + "_counterpart")
+
+    if (calledBySelf) then
+        if(currentFirstAddress != "" || currentSecondAddress != "") then throw("Contract already initiated!")
+        else {
+            WriteSet([
+                DataEntry("firstAddress", firstAddress),
+                DataEntry("secondAddress", secondAddress),
+                DataEntry(firstAddress + "_counterpart", secondPublicKey),
+                DataEntry(secondAddress + "_counterpart", firstPublicKey),
+                DataEntry("timelockPeriod", timelockPeriod)
+            ])
+        }
+    else throw("Init function can only be called by contract itself!")
+}
+
+@Verifier(tx)
+func verify() = {
+    match tx {
+        case tx: InvokeScriptTransaction => (tx.dApp == this) &&
+                                            (tx.function == "init") &&
+                                            (tx.fee == 900000) &&
+                                            sigVerify(tx.bodyBytes, tx.proofs[0], tx.senderPublicKey)
+        case _ => false
+    }
+}

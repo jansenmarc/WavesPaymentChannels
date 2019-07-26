@@ -1,0 +1,27 @@
+{
+  "name": "wavespaymentchannel",
+  "version": "0.0.1",
+  "description": "A command line tool for hanndling Payment Channels on the Waves Platform",
+  "main": "paymentChannels.js",
+  "dependencies": {
+    "@waves/signature-adapter": "^5.0.3",
+    "@waves/waves-transactions": "^3.10.1",
+    "command-line-args": "^5.1.1",
+    "command-line-usage": "^5.0.5",
+    "log4js": "^4.3.1",
+    "request": "^2.88.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "Waves",
+    "Platform",
+    "Payment",
+    "Channels",
+    "Blockchain"
+  ],
+  "author": "Marc Jansen",
+  "license": "ISC"
+}
