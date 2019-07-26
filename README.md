@@ -48,5 +48,52 @@ exchange their public keys. See the example_config.json file for further details
 ### Setting up a payment channel
 One of the users who participate in a payment channel can set up the payment channel via the following command:
 ```
-node paymentChannels.js --setup --config=config.json
+node paymentChannels.js --setup --config=<config file>
+```
+
+### Funding the payment channel
+After the payment channel was successfully set up, each participant can fund the payment channel with a certain
+amount of Waves:
+```
+node paymentChannels.js --fund --amount=<amount in Wavelets> --config=<config file>
+```
+
+### Payments in the channel
+After funding, each participant can send transactions to the other party of the payment channel by:
+```
+node paymentChannels.js --pay --amount=<amount in Wavelets> --config=<config file>
+``
+This generates a JSON file with the filename of <address 1 of the payment channel>_<address 2 of the payment channel>.json,
+which needs to be send to the recipient of the transfer.
+
+### Initiate closing of a payment channel
+Each participant can at any time decide to close the payment channel via the following command:
+```
+node paymentChannels.js --initiateClosing --config=<config file>
+```
+
+### Confirm closing
+After one party decided to close the payment channel, the other party can confirm this by:
+```
+node paymentChannels.js --confirmClosing --config=<config file>
+``
+
+### Closing after timelock
+If the other party does not confirm the closing of the channel within a certain amount of blocks, the initiator of the closing
+can finally cloase the payment channel via:
+```
+node paymentChannels.js --confirmCloseAfterTimelock --config=<config file>
+```
+
+### Claim cheating
+In case the initiator of the closing tried to close the payment channel with a wrong (outdated) state (distribution of funds),
+the other party can claim all funds of the payment channel and finally close it by:
+```
+node paymentChannels.js --claimCheating --config=<config file>
+```
+
+### List all payment channels for an address
+Each participant can show a list of payment channels he is involved in by:
+```
+node paymentChannels.js --list --config=<config file>
 ```
