@@ -99,4 +99,4 @@ node paymentChannels.js --list --config=<config file>
 ```
 
 ## Info
-If you further want to support this work, donationns (especially in WRT) are welcome to: 3PK2MrcuSKwP6QTc8XQR9g1PCjqFwiNxzW3.
+If you further want to support this work, donations (especially in WRT) are welcome to: 3PK2MrcuSKwP6QTc8XQR9g1PCjqFwiNxzW3.
