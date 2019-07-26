@@ -62,7 +62,7 @@ node paymentChannels.js --fund --amount=<amount in Wavelets> --config=<config fi
 After funding, each participant can send transactions to the other party of the payment channel by:
 ```
 node paymentChannels.js --pay --amount=<amount in Wavelets> --config=<config file>
-``
+```
 This generates a JSON file with the filename of <address 1 of the payment channel>_<address 2 of the payment channel>.json,
 which needs to be send to the recipient of the transfer.
 
