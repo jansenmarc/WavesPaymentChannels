@@ -42,3 +42,11 @@ npm install
 from the cloned directory.
 
 ## Usage
+First of all, a configuration file needs to be created on both ends of the payment channel. Therefore, users have to
+exchange their public keys. See the example_config.json file for further details of the configuration file.
+
+### Setting up a payment channel
+One of the users who participate in a payment channel can set up the payment channel via the following command:
+```
+node paymentChannels.js --setup --config=config.json
+```
