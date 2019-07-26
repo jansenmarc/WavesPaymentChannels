@@ -76,7 +76,7 @@ node paymentChannels.js --initiateClosing --config=<config file>
 After one party decided to close the payment channel, the other party can confirm this by:
 ```
 node paymentChannels.js --confirmClosing --config=<config file>
-``
+```
 
 ### Closing after timelock
 If the other party does not confirm the closing of the channel within a certain amount of blocks, the initiator of the closing
