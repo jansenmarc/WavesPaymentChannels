@@ -12,7 +12,12 @@ This implementation of Payment Channels for the Waves network is implemented in 
 a proper NodeJS installation is necessary, as described [here](https://nodejs.org/). After its installation of
 NodeJS, the githup repo can be cloned by
 ```
-git clone
+git clone git@github.com:jansenmarc/WavesPaymentChannels.git
 ```
+Afterwards, missing requirements can be installed by
+```
+npm install
+```
+from the cloned directory.
 
 ## Usage
